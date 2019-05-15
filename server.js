@@ -5,7 +5,8 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
-// app.use(bodyParser.urlencoded({ extended: true }));
+
+// parse incoming request body data as JSON
 app.use(bodyParser.json());
 
 // we've started you off with Express, 
@@ -16,17 +17,17 @@ app.use(bodyParser.json());
 
 // init sqlite db
 var fs = require('fs');
-var dbFile = './.data/locations2.db';
+var dbFile = './.data/locations7.db';  
 var exists = fs.existsSync(dbFile);
 var sqlite3 = require('sqlite3').verbose();
 var db = new sqlite3.Database(dbFile);   
 
-// if ./.data/sqlite.db does not exist, create it, otherwise print records to console
-db.serialize(function(){
+// if .db does not exist, create it, otherwise print records to console
+db.serialize(function(){  
   if (!exists) {
-    db.run('CREATE TABLE Locations (title, subtitle, latitude, longitude, value1, value2)');
+    db.run('CREATE TABLE Locations (rowid integer primary key, title, subtitle, latitude, longitude, value1, value2)');
     console.log('New table Locations created!');
-
+ 
     db.serialize(function() {
       db.run('INSERT INTO Locations (title, subtitle, latitude, longitude, value1, value2) VALUES ($title, $subtitle, $latitude, $longitude, $value1, $value2)',
              {$title: "Goldstruck Coffee",
@@ -53,10 +54,7 @@ db.serialize(function(){
               $value2:null      
       });
     });
-    // // insert default dreams
-    // db.serialize(function() {
-    //   db.run('INSERT INTO Dreams (dream) VALUES ("Find and count some sheep"), ("Climb a really tall mountain"), ("Wash the dishes")');
-    // });
+
   }
   else {
     console.log('Database "Locations" ready to go!');
@@ -68,29 +66,29 @@ db.serialize(function(){
   
   }
 });
-  
 
-// // http://expressjs.com/en/starter/basic-routing.html
-// app.get('/', function(request, response) {
-//   response.sendFile(__dirname + '/views/index.html');
-// });
 
-// endpoint to get all the dreams in the database
-// currently this is the only endpoint, ie. adding dreams won't update the database
-// read the sqlite3 module docs and try to add your own! https://www.npmjs.com/package/sqlite3
+// endpoint to get all the items in the database
 app.get('/getLocations', function(request, response) {
-  db.all('SELECT rowid, title, subtitle, latitude, longitude, value1, value2 from Locations', function(err, rows) {
-    response.send(JSON.stringify(rows));
-  });
+  // response.send("Locations go here.");
+  db.all('SELECT * from Locations', 
+         function(err, rows) {
+            response.send(JSON.stringify(rows));
+         }
+  );
 });
+
+// endpoint to add an item to the database
 
 app.post('/addLocation', function(request, response) {
   var location = request.body;
+  // Note: Normally you would have to validate this data before adding it to the database!!
+  // This is because this function could just as easily be called by a remote hacker running a script just as much as it 
+  // could come from our official app. Same goes for the other endpoints.
   console.log(location);
   db.serialize(function() {
-    
     db.run('INSERT INTO Locations(title, subtitle, latitude, longitude, value1, value2) VALUES (?, ?, ?, ?, ?, ?)',
-         location.title,
+          location.title,
            location.subtitle,
            location.latitude,
            location.longitude,
@@ -100,6 +98,7 @@ app.post('/addLocation', function(request, response) {
   response.end();
 }); 
 
+// endpoint to update properties for an item already in the database
 app.post('/updateLocation', function(request, response) {
   var location = request.body;
   db.serialize(function() {
@@ -115,6 +114,7 @@ app.post('/updateLocation', function(request, response) {
   response.end();
 });
 
+// endpoint to delete an item from the database
 app.post('/deleteLocation', function(request, response) {
   var location = request.body;
   db.serialize(function() {
@@ -124,6 +124,7 @@ app.post('/deleteLocation', function(request, response) {
   response.end();
 });
 
+// start running the server &
 // listen for requests :)
 var listener = app.listen(process.env.PORT, function() {
   console.log('Your app is listening on port ' + listener.address().port);
